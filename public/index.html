@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="ro">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Sufalopoly</title>
+  <script src="/socket.io/socket.io.js"></script>
+  <style>
+    :root {
+      --felt-dark: #16523a;
+      --cream: #f4efe1;
+      --ink: #1a1a1a;
+      --red: #d1382f;
+      --gold: #d4a72c;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Georgia', 'Times New Roman', serif;
+      background: var(--felt-dark);
+      color: var(--cream);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      overflow-x: hidden;
+    }
+
+    .top-bar {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--cream);
+      color: var(--ink);
+      padding: 10px 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+      border: 3px solid var(--ink);
+      font-weight: bold;
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.3);
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 20;
+    }
+
+    .leave-btn {
+      background: var(--red);
+      color: white;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      padding: 8px 15px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .leave-btn:hover {
+      background: #b3261e;
+      transform: scale(0.95);
+    }
+
+    .leave-btn:active {
+      transform: scale(0.9);
+    }
+
+    .music-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.4rem;
+      color: var(--ink);
+      padding: 0;
+      margin: 0;
+      transition: transform 0.2s;
+    }
+
+    .music-btn:hover {
+      transform: scale(1.2);
+    }
+
+    .board-wrapper {
+      width: 100%;
+      max-width: 800px;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      border: 4px solid var(--ink);
+      border-radius: 8px;
+      background: var(--ink);
+      margin-bottom: 20px;
+      box-shadow: 10px 10px 0 rgba(0, 0, 0, 0.4);
+      touch-action: pan-x pan-y;
+      position: relative;
+    }
+
+    .board-container {
+      position: relative;
+      width: 800px;
+      height: 800px;
+      background-image: url('/board.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      transform-origin: top left;
+      margin: 0;
+    }
+
+    .zoom-controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .zoom-controls button {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      font-size: 1.5rem;
+      background: var(--cream);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .calibrate-controls {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      z-index: 100;
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .calibrate-controls button {
+      width: 35px;
+      height: 35px;
+      font-size: 1.2rem;
+      background: var(--cream);
+      border: 1px solid var(--ink);
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+    }
+
+    .player-token {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid white;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 0 #000;
+      pointer-events: none;
+
+      /* Tranziție lină și scurtă pentru fiecare pas */
+      transition: left 0.25s ease, top 0.25s ease;
+    }
+
+    /* Efect de scânteie la fiecare pas */
+    .player-token.step {
+      animation: stepGlow 0.3s ease;
+    }
+
+    @keyframes stepGlow {
+      0% {
+        box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7);
+      }
+
+      100% {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
+      }
+    }
+
+    .tile-hotspot {
+      position: absolute;
+      background: transparent;
+      cursor: pointer;
+      z-index: 5;
+      border: 1px solid transparent;
+    }
+
+    .tile-hotspot:hover {
+      border: 2px solid var(--gold);
+      background: rgba(255, 215, 0, 0.2);
+    }
+
+    .card {
+      background: var(--cream);
+      color: var(--ink);
+      border-radius: 4px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 3px solid var(--ink);
+      box-shadow: 4px 4px 0 rgba(0, 0, 0, .25);
+      text-align: left;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    button {
+      font-family: inherit;
+      font-weight: bold;
+      font-size: 1rem;
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: 2px solid var(--ink);
+      background: var(--gold);
+      color: var(--ink);
+      cursor: pointer;
+      transition: all .2s;
+      margin: 5px;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    button:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    button.secondary {
+      background: var(--cream);
+    }
+
+    .dice-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+
+    .die {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: var(--ink);
+    }
+
+    .players-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .players-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #ddd;
+      font-size: .9rem;
+    }
+
+    .log-box {
+      background: white;
+      color: var(--ink);
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      padding: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: .8rem;
+      text-align: left;
+    }
+
+    .props-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .prop-chip {
+      background: var(--cream);
+      color: var(--ink);
+      padding: 10px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      text-align: center;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+
+    #modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(3px);
+      padding: 15px;
+    }
+
+    .modal-card {
+      width: 320px;
+      max-width: 100%;
+      background: #fff;
+      border: 5px solid var(--ink);
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      color: var(--ink);
+      text-align: center;
+      position: relative;
+      transform: rotate(-2deg);
+    }
+
+    .modal-card .close-btn {
+      position: absolute;
+      top: -15px;
+      right: -15px;
+      background: var(--red);
+      color: white;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .modal-lock-message {
+      font-size: 0.8rem;
+      color: red;
+      margin-top: 15px;
+      font-weight: bold;
+      text-transform: uppercase;
+    }
+
+    body:not(.in-game) .board-wrapper,
+    body:not(.in-game) .board-container {
+      display: none;
+    }
+
+    body.in-game .board-wrapper {
+      display: block;
+    }
+
+    body.in-game .board-container {
+      display: block;
+    }
+  </style>
+</head>
+
+<body class="">
+  <!-- Audio background music loop -->
+  <audio id="bgm" loop>
+    <source src="/mircea.mp3" type="audio/mpeg">
+  </audio>
+
+  <div class="top-bar" id="top-bar"></div>
+
+  <div class="board-wrapper" id="board-wrapper">
+    <div class="zoom-controls">
+      <button onclick="zoomIn()">+</button>
+      <button onclick="zoomOut()">-</button>
+      <button onclick="resetZoom()" style="font-size: 1rem;">⟲</button>
+    </div>
+    <div id="board-container" class="board-container"></div>
+  </div>
+
+  <div id="ui-wrapper"></div>
+
+  <div id="modal-overlay" style="display:none;"></div>
+
+  <script>
+    const socket = io();
+    let myId = null;
+    let roomCode = null;
+    let state = null;
+    let lastProcessedCard = null;
+
+    let currentScale = 1;
+    let panX = 0;
+    let panY = 0;
+    let isDragging = false;
+    let startX, startY;
+    let initialDistance = 0;
+    let initialScale = 1;
+
+    // Geometria tablei, măsurată direct din board.png (1378x1384px):
+    // colțurile au 182px, cele 9 căsuțe de pe fiecare latură au 112px fiecare.
+    // 182 + 9*112 + 182 = 1372 ≈ lățimea/înălțimea utilă a tablei.
+    const CORNER_PCT = (182 / 1372) * 100;     // ~13.2653% — mărimea unui colț
+    const EDGE_PCT = (112 / 1372) * 100;       // ~8.1633%  — mărimea unei căsuțe de margine
+    const CORNER_CENTER = CORNER_PCT / 2;      // ~6.6327%  — centrul unui colț, față de marginea tablei
+
+    const PAWN_COLORS = ['#d1382f', '#2255a4', '#3a9450', '#d4a72c', '#d454a3', '#3a3a3a'];
+
+    // Variabile pentru animația pas cu pas
+    let animationQueue = [];
+    let isAnimating = false;
+    let previousPositions = {}; // Salvăm pozițiile anterioare
+
+    // Încercăm să ne reconectăm automat la refresh
+    const savedRoom = localStorage.getItem('roomCode');
+    const savedPlayerId = localStorage.getItem('playerId');
+
+    if (savedRoom && savedPlayerId) {
+      socket.emit('reconnect_player', { code: savedRoom, playerId: savedPlayerId }, (res) => {
+        if (res && res.ok) {
+          roomCode = savedRoom;
+          myId = savedPlayerId;
+        } else {
+          localStorage.removeItem('roomCode');
+          localStorage.removeItem('playerId');
+        }
+      });
+    }
+
+    // Funcție pentru a părăsi jocul
+    function leaveGame() {
+      if (!confirm("Ești sigur că vrei să părăsești jocul? Vei fi scos din camera curentă.")) return;
+
+      localStorage.removeItem('roomCode');
+      localStorage.removeItem('playerId');
+
+      roomCode = null;
+      myId = null;
+      state = null;
+      lastProcessedCard = null;
+
+      socket.disconnect();
+      socket.connect();
+
+      render();
+    }
+
+    // Funcție pentru a porni/opri muzica de fundal
+    let musicPlaying = false;
+
+    function toggleMusic() {
+      const bgm = document.getElementById('bgm');
+      if (musicPlaying) {
+        bgm.pause();
+        musicPlaying = false;
+        document.getElementById('music-btn').textContent = '🔇';
+      } else {
+        bgm.play();
+        musicPlaying = true;
+        document.getElementById('music-btn').textContent = '🔊';
+      }
+    }
+
+    // Pornește muzica la primul click al utilizatorului (cerință browser)
+    document.addEventListener('click', function startMusic() {
+      const bgm = document.getElementById('bgm');
+      if (!musicPlaying) {
+        bgm.volume = 0.8; // Volum 40%
+        bgm.play();
+        musicPlaying = true;
+        const btn = document.getElementById('music-btn');
+        if (btn) btn.textContent = '🔊';
+      }
+      // Eliminăm evenimentul după primul click
+      document.removeEventListener('click', startMusic);
+    });
+
+    // Poziția (in %) a centrului fiecărei căsuțe, calculată exact din geometria tablei.
+    // O căsuță de margine aflată la "n" poziții distanță de colțul cel mai apropiat
+    // (n = 1..9) are centrul la CORNER_PCT + (n - 0.5) * EDGE_PCT % de la acea margine.
+    function getTilePercentages(pos) {
+      if (pos === 0) return { x: 100 - CORNER_CENTER, y: 100 - CORNER_CENTER };   // GOPO (jos-dreapta)
+      if (pos === 10) return { x: CORNER_CENTER, y: 100 - CORNER_CENTER };        // La Piroman (jos-stânga)
+      if (pos === 20) return { x: CORNER_CENTER, y: CORNER_CENTER };              // Stație electrică (sus-stânga)
+      if (pos === 30) return { x: 100 - CORNER_CENTER, y: CORNER_CENTER };        // Pușcăria (sus-dreapta)
+
+      if (pos >= 1 && pos <= 9) {
+        const n = 10 - pos; // n=1 lângă colțul din stânga (pos10), n=9 lângă GOPO (pos0)
+        return { x: CORNER_PCT + (n - 0.5) * EDGE_PCT, y: 100 - CORNER_CENTER };
+      }
+      if (pos >= 11 && pos <= 19) {
+        const n = 20 - pos; // n=1 lângă colțul de sus (pos20), n=9 lângă La Piroman (pos10)
+        return { x: CORNER_CENTER, y: CORNER_PCT + (n - 0.5) * EDGE_PCT };
+      }
+      if (pos >= 21 && pos <= 29) {
+        const n = pos - 20; // n=1 lângă colțul din stânga sus (pos20), n=9 lângă Pușcăria (pos30)
+        return { x: CORNER_PCT + (n - 0.5) * EDGE_PCT, y: CORNER_CENTER };
+      }
+      if (pos >= 31 && pos <= 39) {
+        const n = pos - 30; // n=1 lângă Pușcăria (pos30), n=9 lângă GOPO (pos0)
+        return { x: 100 - CORNER_CENTER, y: CORNER_PCT + (n - 0.5) * EDGE_PCT };
+      }
+    }
+
+    // Funcție pentru a anima pas cu pas un jucător, de la poziția lui VECHE la cea NOUĂ.
+    // (mutarea în Monopoly e mereu "înainte", deci mereu +1, cu wrap la 40)
+    function animatePlayerStep(playerId, fromPos, targetPos) {
+      const player = state.players.find(p => p.id === playerId);
+      if (!player) return;
+
+      // Construim traseul de poziții intermediare (pas cu pas), pornind de la poziția veche
+      const path = [];
+      let pos = fromPos;
+      while (pos !== targetPos) {
+        pos = (pos + 1) % 40;
+        path.push(pos);
+      }
+
+      // Adăugăm animația în coadă
+      animationQueue.push({
+        playerId,
+        path,
+        callback: () => { }
+      });
+
+      // Dacă nu este deja o animație în curs, pornim procesarea cozii
+      if (!isAnimating) processAnimationQueue();
+    }
+
+    // Procesăm coada de animații
+    function processAnimationQueue() {
+      if (animationQueue.length === 0) {
+        isAnimating = false;
+        // Randăm tabla o ultimă dată ca stivuirea pionilor pe aceeași căsuță
+        // (offsetul dintre pioni suprapuși) să fie exactă la final.
+        if (state && state.started) renderBoard();
+        return;
+      }
+
+      isAnimating = true;
+      const animation = animationQueue.shift();
+      const playerId = animation.playerId;
+      const path = animation.path;
+
+      let stepIndex = 0;
+
+      const moveStep = () => {
+        if (stepIndex >= path.length) {
+          // Am terminat pașii, trecem la următoarea animație din coadă
+          processAnimationQueue();
+          return;
+        }
+
+        // Actualizăm poziția vizuală a pionului (dar nu și pe cea din server)
+        const pos = path[stepIndex];
+        const coords = getTilePercentages(pos);
+
+        // Găsim pionul în DOM
+        const token = document.querySelector(`.player-token[data-player-id="${playerId}"]`);
+        if (token) {
+          // Același format ca în renderBoard() (centrăm pionul de 22px pe căsuță),
+          // altfel în timpul animației pionul apare decalat cu jumătate din mărimea lui.
+          token.style.left = `calc(${coords.x}% - 11px)`;
+          token.style.top = `calc(${coords.y}% - 11px)`;
+          token.classList.add('step');
+
+          // Eliminăm clasa după animație
+          setTimeout(() => token.classList.remove('step'), 300);
+        }
+
+        stepIndex++;
+        setTimeout(moveStep, 300); // Pauză de 300ms între pași
+      };
+
+      moveStep();
+    }
+
+    function applyTransform() {
+      const container = document.getElementById('board-container');
+      container.style.transform = `scale(${currentScale}) translate(${panX}px, ${panY}px)`;
+      const wrapper = document.getElementById('board-wrapper');
+      wrapper.style.width = `${800 * currentScale}px`;
+      wrapper.style.height = `${800 * currentScale}px`;
+    }
+
+    function zoomIn() {
+      currentScale = Math.min(currentScale + 0.2, 3);
+      applyTransform();
+    }
+
+    function zoomOut() {
+      currentScale = Math.max(currentScale - 0.2, 0.5);
+      applyTransform();
+    }
+
+    function resetZoom() {
+      currentScale = 1;
+      panX = 0;
+      panY = 0;
+      applyTransform();
+    }
+
+    function setupTouchEvents() {
+      const wrapper = document.getElementById('board-wrapper');
+
+      wrapper.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true;
+          startX = e.touches[0].clientX - panX;
+          startY = e.touches[0].clientY - panY;
+        } else if (e.touches.length === 2) {
+          isDragging = false;
+          initialDistance = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          initialScale = currentScale;
+        }
+      }, { passive: true });
+
+      wrapper.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length === 1) {
+          panX = e.touches[0].clientX - startX;
+          panY = e.touches[0].clientY - startY;
+          applyTransform();
+        } else if (e.touches.length === 2) {
+          e.preventDefault();
+          const dist = Math.hypot(
+            e.touches[0].clientX - e.touches[1].clientX,
+            e.touches[0].clientY - e.touches[1].clientY
+          );
+          currentScale = Math.min(Math.max(initialScale * (dist / initialDistance), 0.5), 3);
+          applyTransform();
+        }
+      }, { passive: false });
+
+      wrapper.addEventListener('touchend', () => {
+        isDragging = false;
+      });
+    }
+
+    function el(html) {
+      const div = document.createElement('div');
+      div.innerHTML = html.trim();
+      return div.firstElementChild;
+    }
+
+    function openModal(htmlContent, isMyTurn, onClose) {
+      const overlay = document.getElementById('modal-overlay');
+      overlay.style.display = 'flex';
+
+      overlay.innerHTML = `
+        <div class="modal-card">
+          <button class="close-btn" id="modal-close-btn">×</button>
+          <div style="color: #888; font-size: 12px; margin-bottom: 10px; text-transform: uppercase;">${isMyTurn ? 'Cartea ta' : 'Cartea se joacă acum...'}</div>
+          <div>${htmlContent}</div>
+          <button id="modal-ok-btn" style="margin-top:20px;">${isMyTurn ? 'Am înțeles, continui' : 'Am citit'}</button>
+        </div>
+      `;
+
+      const closeBtn = document.getElementById('modal-close-btn');
+      const okBtn = document.getElementById('modal-ok-btn');
+
+      const close = () => {
+        overlay.style.display = 'none';
+        if (onClose) onClose();
+      };
+
+      closeBtn.onclick = close;
+      okBtn.onclick = close;
+    }
+
+    function handleCardDrawn(cardText, isMyTurn, onClose) {
+      const cardHTML = `
+        <div style="text-align: center; font-family: Georgia, serif;">
+          <div style="font-size: 14px; color: #888; margin-bottom: 10px;">CARTE EXTRASĂ</div>
+          <div style="font-size: 16px; line-height: 1.5; color: #222;">${cardText}</div>
+        </div>
+      `;
+      openModal(cardHTML, isMyTurn, onClose);
+    }
+
+    function showTileInfo(tileIndex) {
+      const tile = state.board[tileIndex];
+      if (tile.cardText) {
+        openModal(tile.cardText, false);
+      }
+    }
+
+    function renderBoard() {
+      const board = state.board;
+      let html = '';
+
+      // Hotspot-urile pentru click (colțurile sunt mai mari decât căsuțele obișnuite)
+      const isCorner = (i) => i === 0 || i === 10 || i === 20 || i === 30;
+      for (let i = 0; i < 40; i++) {
+        const tile = board[i];
+        if (!tile.cardText) continue;
+
+        const coords = getTilePercentages(i);
+        const size = isCorner(i) ? CORNER_PCT : EDGE_PCT;
+        html += `<div class="tile-hotspot" 
+          style="left: ${coords.x - size / 2}%; top: ${coords.y - size / 2}%; width: ${size}%; height: ${size}%;"
+          onclick="showTileInfo(${i})"
+          title="${tile.name}"></div>`;
+      }
+
+      // Pionii jucătorilor
+      state.players.forEach((p, i) => {
+        if (p.bankrupt) return;
+
+        const coords = getTilePercentages(p.pos);
+        const left = coords.x;
+        const top = coords.y;
+
+        const samePosCount = state.players.filter(pl => pl.pos === p.pos && !pl.bankrupt).length;
+        let offsetX = 0, offsetY = 0;
+        if (samePosCount > 1) {
+          const indexInStack = state.players.filter(pl => pl.pos === p.pos && !pl.bankrupt).indexOf(p);
+          offsetX = (indexInStack - (samePosCount - 1) / 2) * 12;
+          offsetY = (indexInStack - (samePosCount - 1) / 2) * 12;
+        }
+
+        html += `<div class="player-token" 
+          data-player-id="${p.id}"
+          style="background:${PAWN_COLORS[i % PAWN_COLORS.length]}; 
+          left: calc(${left}% + ${offsetX}px - 11px); 
+          top: calc(${top}% + ${offsetY}px - 11px);">
+          ${i + 1}
+        </div>`;
+      });
+
+      document.getElementById('board-container').innerHTML = html;
+      resetZoom();
+    }
+
+    function render() {
+      const uiWrapper = document.getElementById('ui-wrapper');
+      const topBar = document.getElementById('top-bar');
+
+      uiWrapper.innerHTML = '';
+      topBar.innerHTML = '';
+
+      if (!roomCode) {
+        document.body.classList.remove('in-game');
+        const wrap = el('<div></div>');
+        wrap.appendChild(el('<h1 class="title" style="font-size:3rem; color:var(--red); text-shadow: 4px 4px 0 #000;">SUFALOPOLY</h1>'));
+
+        const createCard = el(`
+        <div class="card" style="width: 400px; margin: 0 auto;">
+          <label>Numele tău</label>
+          <input type="text" id="name1" placeholder="ex: Razvan" maxlength="16" style="width:100%; padding:10px; margin-bottom:15px;">
+          <button id="createBtn">Creează o cameră nouă</button>
+        </div>
+      `);
+        wrap.appendChild(createCard);
+
+        const joinCard = el(`
+        <div class="card" style="width: 400px; margin: 20px auto;">
+          <label>Numele tău</label>
+          <input type="text" id="name2" placeholder="ex: Vlad" maxlength="16" style="width:100%; padding:10px; margin-bottom:15px;">
+          <label>Cod cameră</label>
+          <input type="text" id="codeInput" placeholder="ex: A1B2" maxlength="4" style="width:100%; padding:10px; margin-bottom:15px; text-transform:uppercase;">
+          <button class="secondary" id="joinBtn">Intră într-o cameră</button>
+          <p id="joinError" style="color:#b3261e; font-size:.85rem; margin-top:8px;"></p>
+        </div>
+      `);
+        wrap.appendChild(joinCard);
+
+        setTimeout(() => {
+          document.getElementById('createBtn').onclick = () => {
+            const name = document.getElementById('name1').value.trim() || 'Jucător';
+            socket.emit('create_room', { name }, (res) => {
+              if (res.ok) {
+                roomCode = res.code;
+                myId = res.playerId;
+                localStorage.setItem('roomCode', roomCode);
+                localStorage.setItem('playerId', myId);
+                render();
+              }
+            });
+          };
+          document.getElementById('joinBtn').onclick = () => {
+            const name = document.getElementById('name2').value.trim() || 'Jucător';
+            const code = document.getElementById('codeInput').value.trim().toUpperCase();
+            socket.emit('join_room', { code, name }, (res) => {
+              if (res.ok) {
+                roomCode = res.code;
+                myId = res.playerId;
+                localStorage.setItem('roomCode', roomCode);
+                localStorage.setItem('playerId', myId);
+                render();
+              }
+              else document.getElementById('joinError').textContent = res.error;
+            });
+          };
+        }, 0);
+
+        uiWrapper.appendChild(wrap);
+        return;
+      }
+
+      if (!state) {
+        document.body.classList.remove('in-game');
+        uiWrapper.appendChild(el('<p style="text-align:center; margin-top:50px; font-size: 2rem;">Se conectează...</p>'));
+        return;
+      }
+
+      if (!state.started) {
+        document.body.classList.remove('in-game');
+        topBar.innerHTML = `<span>Sală de așteptare</span><span style="font-family: monospace; background: black; color: gold; padding: 5px 10px; border-radius: 4px;">${roomCode}</span> <button class="leave-btn" onclick="leaveGame()">Părăsește jocul</button> <button class="music-btn" id="music-btn" onclick="toggleMusic()">🔊</button>`;
+        const wrap = el('<div style="text-align:center;"></div>');
+        wrap.appendChild(el(`<p style="font-size: 1.2rem;">Trimite codul <b style="color: gold;">${roomCode}</b> prietenilor.</p>`));
+
+        const card = el('<div class="card" style="width: 400px; margin: 0 auto;"></div>');
+        card.appendChild(el('<label>Jucători</label>'));
+        const list = el('<ul class="players-list"></ul>');
+        state.players.forEach((p, i) => {
+          list.appendChild(el(`
+        <li>
+          <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${PAWN_COLORS[i % PAWN_COLORS.length]};border:1px solid #000;margin-right:5px;"></span>${p.name}${p.id === myId ? ' (tu)' : ''}</span>
+          <span class="money">M${p.money}</span>
+        </li>
+      `));
+        });
+        card.appendChild(list);
+        wrap.appendChild(card);
+
+        const isFirst = state.players[0] && state.players[0].id === myId;
+        if (isFirst) {
+          const startBtn = el(`<button style="width: 400px; margin-top: 20px;" ${state.players.length < 2 ? 'disabled' : ''}>Începe jocul (${state.players.length}/6)</button>`);
+          startBtn.onclick = () => socket.emit('start_game', () => { });
+          wrap.appendChild(startBtn);
+        } else {
+          wrap.appendChild(el('<p style="margin-top:20px;">Așteptăm ca gazda să înceapă jocul...</p>'));
+        }
+
+        uiWrapper.appendChild(wrap);
+        return;
+      }
+
+      // JOC ACTIV
+      document.body.classList.add('in-game');
+      const me = state.players.find(p => p.id === myId);
+      const current = state.players[state.turnIndex];
+      const myTurn = current && current.id === myId;
+
+      topBar.innerHTML = `<span>Cod: ${roomCode}</span><span>${myTurn ? 'RÂNDUL TĂU!' : `Așteaptă-l pe ${current.name}`}</span> <button class="leave-btn" onclick="leaveGame()">Părăsește jocul</button> <button class="music-btn" id="music-btn" onclick="toggleMusic()">🔊</button>`;
+
+      if (state.betiviExtrasi) {
+        uiWrapper.appendChild(el(`<p style="text-align:center; font-size:.85rem; color:#ccc; margin:2px 0 10px;">
+          🍺 Bețivi ieșiți din pachet: ${state.betiviExtrasi.simplu} simpli, ${state.betiviExtrasi.dinsus} dinsus
+        </p>`));
+      }
+
+      // Verificăm dacă pozițiile jucătorilor s-au schimbat pentru a porni animația
+      const positionsChanged = state.players.some(p => {
+        return previousPositions[p.id] !== undefined && previousPositions[p.id] !== p.pos;
+      });
+
+      if (positionsChanged) {
+        // Tabla trebuie să existe deja pe ecran (din randarea anterioară) ca să găsim
+        // pionii și să-i alunecăm spre noua poziție. Pentru fiecare jucător care s-a
+        // mutat, pornim animația pas cu pas de la poziția lui veche.
+        state.players.forEach(p => {
+          const prevPos = previousPositions[p.id];
+          if (prevPos !== undefined && prevPos !== p.pos) {
+            animatePlayerStep(p.id, prevPos, p.pos);
+          }
+        });
+      } else {
+        // Dacă nu s-au schimbat pozițiile (sau e prima randare), redăm tabla normal
+        renderBoard();
+      }
+
+      // IMPORTANT: actualizăm previousPositions la FIECARE randare, indiferent de ramură.
+      // Altfel (bug-ul de dinainte) previousPositions[p.id] rămânea "undefined" pentru
+      // totdeauna, positionsChanged era mereu false, și tabla se redesena direct pe
+      // poziția finală, fără nicio animație vizibilă.
+      state.players.forEach(p => { previousPositions[p.id] = p.pos; });
+
+      if (state.lastDice) {
+        uiWrapper.appendChild(el(`<div class="dice-row">
+        <div class="die">${state.lastDice.d1}</div>
+        <div class="die">${state.lastDice.d2}</div>
+      </div>`));
+      }
+
+      const pa = state.pendingAction;
+      const actions = el('<div style="text-align:center;"></div>');
+
+      if (pa && pa.type === 'claim_question' && pa.playerId === myId) {
+        // Întrebarea "Ești neam cu X?" — doar cel care a cumpărat/extras vede asta.
+        const box = el(`<div class="card" style="max-width:420px;margin:0 auto 14px;">
+          <p style="font-weight:bold;margin-top:0;">Ești neam cu <span style="color:var(--red)">${pa.properNoun}</span> sau stai în zona respectivă?</p>
+        </div>`);
+        const btnRow = el('<div style="display:flex;gap:10px;justify-content:center;"></div>');
+        const yesBtn = el('<button>Da</button>');
+        const noBtn = el('<button class="secondary">Nu</button>');
+        noBtn.onclick = () => socket.emit('answer_claim', { related: false }, (res) => { if (res && res.error) alert(res.error); });
+        yesBtn.onclick = () => {
+          btnRow.remove();
+          const reasonBox = el(`<div>
+            <textarea id="claimReason" placeholder="Motivează pe scurt..." style="width:100%;min-height:60px;padding:8px;border-radius:4px;border:1px solid #555;font-family:inherit;"></textarea>
+            <button style="margin-top:8px;">Trimite</button>
+          </div>`);
+          const submitBtn = reasonBox.querySelector('button');
+          submitBtn.onclick = () => {
+            const reason = reasonBox.querySelector('#claimReason').value;
+            socket.emit('answer_claim', { related: true, reason }, (res) => { if (res && res.error) alert(res.error); });
+          };
+          box.appendChild(reasonBox);
+        };
+        btnRow.appendChild(yesBtn);
+        btnRow.appendChild(noBtn);
+        box.appendChild(btnRow);
+        actions.appendChild(box);
+      } else if (pa && pa.type === 'handicap_offer' && pa.playerId === myId) {
+        const box = el(`<div class="card" style="max-width:420px;margin:0 auto 14px;">
+          <p style="font-weight:bold;margin-top:0;">Accepți certificat de handicap (plătești M${pa.cost}) ca să ieși acum din pușcărie? Îl păstrezi tot restul jocului.</p>
+        </div>`);
+        const btnRow = el('<div style="display:flex;gap:10px;justify-content:center;"></div>');
+        const yesBtn = el('<button>Accept (M' + pa.cost + ')</button>');
+        const noBtn = el('<button class="secondary">Refuz</button>');
+        yesBtn.onclick = () => socket.emit('respond_handicap_offer', { accept: true }, (res) => { if (res && res.error) alert(res.error); });
+        noBtn.onclick = () => socket.emit('respond_handicap_offer', { accept: false }, (res) => { if (res && res.error) alert(res.error); });
+        btnRow.appendChild(yesBtn);
+        btnRow.appendChild(noBtn);
+        box.appendChild(btnRow);
+        actions.appendChild(box);
+      } else if (pa && pa.type === 'claim_vote' && pa.playerId === myId) {
+        actions.appendChild(el(`<p style="color:#999;">Așteptăm votul celorlalți despre povestea ta cu ${pa.properNoun}...</p>`));
+      } else if (myTurn && !state.winner) {
+        if (state.pendingAction && state.pendingAction.type === 'awaiting_buy' && state.pendingAction.playerId === myId) {
+          const tile = state.board[state.pendingAction.tileIndex];
+          const buyBtn = el(`<button>Cumpără ${tile.name} — M${tile.price}</button>`);
+          buyBtn.onclick = () => socket.emit('buy_property', (res) => { if (res.error) alert(res.error); });
+          actions.appendChild(buyBtn);
+          const declineBtn = el('<button class="secondary">Nu cumpăr</button>');
+          declineBtn.onclick = () => socket.emit('decline_buy', (res) => { if (res.error) alert(res.error); });
+          actions.appendChild(declineBtn);
+        } else if (me.inJail) {
+          const rollBtn = el('<button>Aruncă zarurile (încearcă dublă)</button>');
+          rollBtn.onclick = () => socket.emit('roll_dice', (res) => { if (res && res.error) alert(res.error); });
+          actions.appendChild(rollBtn);
+          const payBtn = el(`<button class="secondary">Plătește M50 ${me.getOutOfJailFree > 0 ? '(sau folosește cartela liberă)' : ''}</button>`);
+          payBtn.onclick = () => socket.emit('pay_jail', (res) => { if (res.error) alert(res.error); });
+          actions.appendChild(payBtn);
+          if (!me.handicap) {
+            const handicapBtn = el('<button style="background: var(--red); color: white;">Ieși gratuit (Accepți Certificat Handicap ♿)</button>');
+            handicapBtn.onclick = () => {
+              if (confirm("Ești sigur?")) socket.emit('handicap_jail', (res) => { if (res && res.error) alert(res.error); });
+            };
+            actions.appendChild(handicapBtn);
+          }
+        } else if (!state.lastDice) {
+          const rollBtn = el('<button>Aruncă zarurile</button>');
+          rollBtn.onclick = () => socket.emit('roll_dice', (res) => { if (res && res.error) alert(res.error); });
+          actions.appendChild(rollBtn);
+        } else {
+          const endBtn = el('<button>Termină rândul</button>');
+          endBtn.onclick = () => socket.emit('end_turn', (res) => { if (res && res.error) alert(res.error); });
+          actions.appendChild(endBtn);
+        }
+      }
+      uiWrapper.appendChild(actions);
+
+      // Cardul de vot — vizibil oricărui jucător care trebuie să voteze, indiferent de rândul cui e
+      if (pa && pa.type === 'claim_vote') {
+        const claimant = state.players.find(p => p.id === pa.playerId);
+        if (pa.voters.includes(myId) && pa.votes[myId] === undefined) {
+          const voteCard = el(`<div class="card" style="max-width:420px;margin:0 auto 14px;border-color:var(--red);">
+            <p style="margin-top:0;"><b>${claimant.name}</b> zice că e neam cu <b>${pa.properNoun}</b>:</p>
+            <p style="font-style:italic;color:#555;">"${pa.reason}"</p>
+            <p style="margin-bottom:6px;">Crezi povestea?</p>
+          </div>`);
+          const btnRow = el('<div style="display:flex;gap:10px;justify-content:center;"></div>');
+          const yesBtn = el('<button>Da, cred</button>');
+          const noBtn = el('<button class="secondary">Nu cred</button>');
+          yesBtn.onclick = () => socket.emit('vote_claim', { believe: true }, (res) => { if (res && res.error) alert(res.error); });
+          noBtn.onclick = () => socket.emit('vote_claim', { believe: false }, (res) => { if (res && res.error) alert(res.error); });
+          btnRow.appendChild(yesBtn);
+          btnRow.appendChild(noBtn);
+          voteCard.appendChild(btnRow);
+          uiWrapper.appendChild(voteCard);
+        } else if (pa.playerId !== myId) {
+          const votedCount = Object.keys(pa.votes).length;
+          uiWrapper.appendChild(el(`<p style="text-align:center;color:#999;">Vot despre ${claimant.name} și ${pa.properNoun}: ${votedCount}/${pa.voters.length} au votat.</p>`));
+        }
+      }
+
+      const playersCard = el('<div class="card"></div>');
+      playersCard.appendChild(el('<label>Jucători</label>'));
+      const playersList = el('<ul class="players-list"></ul>');
+      state.players.forEach((p, i) => {
+        playersList.appendChild(el(`
+        <li>
+          <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${PAWN_COLORS[i % PAWN_COLORS.length]};border:1px solid #000;margin-right:5px;"></span>${p.name}${p.id === myId ? ' (tu)' : ''}${p.bankrupt ? ' 💀' : ''}${p.inJail ? ' 🔒' : ''}</span>
+          <span class="money">M${p.money}</span>
+        </li>
+      `));
+      });
+      playersCard.appendChild(playersList);
+      uiWrapper.appendChild(playersCard);
+
+      if (me) {
+        const handCard = el('<div class="card"></div>');
+        handCard.appendChild(el('<label>Mâna ta</label>'));
+        const handRow = el('<div style="display:flex;gap:16px;font-size:.95rem;"></div>');
+        handRow.appendChild(el(`<span>🧴 Peturi: <b>${me.petCards || 0}</b>/2 cărți</span>`));
+        handRow.appendChild(el(`<span>🔓 Ieșire liberă: <b>${me.getOutOfJailFree || 0}</b></span>`));
+        if (me.handicap) handRow.appendChild(el('<span>♿ Certificat de handicap</span>'));
+        handCard.appendChild(handRow);
+        uiWrapper.appendChild(handCard);
+      }
+
+      if (me && me.properties.length > 0) {
+        const propsCard = el('<div class="card"></div>');
+        propsCard.appendChild(el('<label>Proprietățile tale</label>'));
+        const grid = el('<div class="props-grid"></div>');
+        me.properties.forEach(idx => {
+          const t = state.board[idx];
+          const o = state.owners[idx];
+          const chip = el(`<div class="prop-chip" onclick="showTileInfo(${idx})">${t.name}${o.mortgaged ? ' (ipotecat)' : ''}${o.houses === 5 ? ' 🏨' : o.houses > 0 ? ' ' + '🏠'.repeat(o.houses) : ''}${o.claimBonus ? ' 👨‍👩‍👦×2' : ''}</div>`);
+          grid.appendChild(chip);
+        });
+        propsCard.appendChild(grid);
+        uiWrapper.appendChild(propsCard);
+      }
+
+      const logCard = el('<div class="card"></div>');
+      logCard.appendChild(el('<label>Jurnal</label>'));
+      const logBox = el('<div class="log-box"></div>');
+      state.log.slice().reverse().forEach(line => logBox.appendChild(el(`<p>${line}</p>`)));
+      logCard.appendChild(logBox);
+      uiWrapper.appendChild(logCard);
+    }
+
+    socket.on('state', (s) => {
+      state = s;
+
+      if (state.lastDrawnCard && state.lastDrawnCard.text !== lastProcessedCard) {
+        lastProcessedCard = state.lastDrawnCard.text;
+
+        const currentPlayer = state.players[state.turnIndex];
+        const isMyTurn = currentPlayer && currentPlayer.id === myId;
+
+        handleCardDrawn(state.lastDrawnCard.text, isMyTurn, () => {
+          if (isMyTurn) {
+            socket.emit('clear_card');
+          }
+        });
+      }
+
+      render();
+    });
+
+    // Inițializare touch events
+    window.addEventListener('load', () => {
+      setupTouchEvents();
+    });
+
+    render();
+  </script>
+</body>
+
+</html>
