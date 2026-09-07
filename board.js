@@ -77,12 +77,12 @@ const BOARD = [
   makeStreet('Ulița lui Hoboricu', 100, 'lightblue', 1),
   makeStreet('Gostat', 120, 'lightblue', 2),
   { type: 'jail', name: 'La Piroman' },
-  makeStreet('Ulița din căpătu satului', 140, 'pink', 0),
+  makeStreet('Ulița din capătu satului', 140, 'pink', 0),
   makeUtility('Mapagral', 150),
   makeStreet('Căpătu satului', 140, 'pink', 1),
   makeStreet('Colectiv', 160, 'pink', 2),
-  makeStation('Stația de la Fânteș', 200),
-  makeStreet('Ulița lui Măricica', 180, 'orange', 0),
+  makeStation('Stația de la Finteuș', 200),
+  makeStreet('Ulița lui Maricica', 180, 'orange', 0),
   { type: 'chest', name: 'Detectorul lui Dale' },
   makeStreet('Ulița lui Tiți', 180, 'orange', 1),
   makeStreet('Ulița lui Maria', 200, 'orange', 2),
@@ -103,7 +103,7 @@ const BOARD = [
   makeStreet('Mogador', 320, 'green', 2),
   makeStation('Stația de la Parc', 200),
   { type: 'chance', name: 'Șansă' },
-  makeStreet('La Bălioc', 350, 'darkblue', 0),
+  makeStreet('La Băltoc', 350, 'darkblue', 0),
   { type: 'tax', name: 'Taxă pă avere', amount: 150 },
   makeStreet('La Gară', 400, 'darkblue', 1),
 ];
@@ -122,12 +122,9 @@ const CHANCE = [
   { text: 'Nu te mai mananca puscaria daca accepti certificat de handicap / poate fi ținută sau tranzacționată (Get Out of Jail Free).', action: { type: 'get_out_of_jail_free_handicap' } },
   { text: 'Ti-o dat piromanu foc la case. Plătește taxă de reparații: M25 de fiecare casă, M100 de fiecare hotel deținut.', action: { type: 'pay_repairs', house: 25, hotel: 100 } },
   // Cărți noi de bețivi
-  { text: 'Bei la limentara cu betivii. Un bețiv simplu a ieșit la pensie!', action: { type: 'add_betiv', betivType: 'simplu' } },
-  { text: 'Bei la limentara cu betivii. Un bețiv dinsus a ieșit la pensie!', action: { type: 'add_betiv', betivType: 'dinsus' } },
   { text: 'Te-o prins betivii de ziua ta la limentara. Plătești pentru toți bețivii scoși din pachet: 50 pentru fiecare bețiv simplu, 75 pentru fiecare bețiv dinsus.', action: { type: 'pay_for_betivs' } },
   { text: 'Dai de băut la toți bețivii. Plătești la bancă pentru fiecare bețiv scos din pachet.', action: { type: 'pay_for_betivs_to_bank' } },
   { text: 'O dat boala in tine si vine Mona sa-ti faca injectii', action: { type: 'pay_bank', amount: 200 } },
-
   // Cărți de peturi
   { text: 'Strângi 150 de peturi de la limentară. Dacă ai 2 cărți de acest tip în mână, primești automat M150.', action: { type: 'add_pet_card' } },
   { text: 'Strângi 150 de peturi de la limentară. Dacă ai 2 cărți de acest tip în mână, primești automat M150.', action: { type: 'add_pet_card' } },
@@ -151,14 +148,18 @@ const CHEST = [
   { text: 'Nu ti-ai cosit ambrozia si te-o prins bujor. Plătești M40 pe fiecare casa și 115 pentru fiecare hotel.', action: { type: 'pay_repairs', house: 40, hotel: 115 } },
   { text: 'Ai câștigat locul doi la concursu de pompieri. Colectezi M50.', action: { type: 'collect_bank', amount: 50 } },
   { text: 'Mergi in cartier la un ciubuc. Colectezi M200.', action: { type: 'collect_bank', amount: 200 } },
+  { text: 'Primesti legume la superpret de la Gopo. Salvezi 50M', action: { type: 'collect_bank', amount: 50 } },
+  { text: 'Trei nunti intr-o luna, fute-le-ai. Platesti 200', action: { type: 'pay_bank', amount: 200 } },
   // Cărți noi pentru Detector
   { text: 'Faci ca Leonora și te duce la nebuni. Primești certificat de handicapat. Plătești 100.', action: { type: 'get_out_of_jail_free_handicap' } },
   { text: 'Faci ca Leonora și te duce la nebuni. Primești certificat de handicapat. Plătești 100.', action: { type: 'get_out_of_jail_free_handicap' } },
   { text: 'Dacă există doi nebuni primesc pachet comun la Sighet — fiecare nebun ia 50. Dacă nu există handicapati în joc, jucătorul care a extras cartea primește M150.', action: { type: 'handicap_bonus' } },
   { text: 'Primești M25 de la fiecare handicapat.', action: { type: 'collect_from_handicapped', amount: 25 } },
   { text: 'Nu mai merge ATM-ul la Bobocu — fiecare jucător îți decartează M50.', action: { type: 'collect_each', amount: 50 } },
-  { text: 'Te întâlnești cu Gusti și îți cere de o bere. Plătești M50 (bețiv simplu).', action: { type: 'pay_bank', amount: 50 } },
-  { text: 'Te întâlnești cu Gopo și îți cere de o bere. Plătești M50 (bețiv dinsus).', action: { type: 'pay_bank', amount: 50 } },
+  { text: 'Te întâlnești cu Gusti și îți cere de o bere. Plătești M50 (bețiv simplu).', action: { type: 'pay_bank', amount: 50, betivType: 'simplu' } },
+  { text: 'Te întâlnești cu Tica și îți cere de o bere. Plătești M50 (bețiv dinsus).', action: { type: 'pay_bank', amount: 50, betivType: 'dinsus' } },
+  { text: 'Te întâlnești cu Ionu Cailor și îți cere de o bere. Plătești M50 (bețiv simplu).', action: { type: 'pay_bank', amount: 50, betivType: 'simplu' } },
+  { text: 'Te întâlnești cu Gopo și îți cere de o bere. Plătești M50 (bețiv dinsus).', action: { type: 'pay_bank', amount: 50, betivType: 'dinsus' } },
   { text: 'Ți-a furat vandam peturile din tomberon. Pierzi toate cărțile de "strâns peturi" din mână.', action: { type: 'steal_pet_cards' } },
 ];
 
@@ -180,8 +181,6 @@ const PROPER_NOUNS = [
 
 function findProperNoun(text) {
   if (!text) return null;
-  // cele mai lungi (mai specifice) nume au prioritate, ca să nu prindem
-  // o potrivire parțială greșită (ex: "Căpătu satului" în loc de "Ulița din căpătu satului")
   const sorted = [...PROPER_NOUNS].sort((a, b) => b.length - a.length);
   for (const name of sorted) {
     if (text.includes(name)) return name;
