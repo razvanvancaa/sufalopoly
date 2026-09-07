@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Sufalopoly
 
 Monopoly custom, jucabil local cu prietenii prin WiFi.
@@ -38,3 +39,6 @@ Monopoly custom, jucabil local cu prietenii prin WiFi.
 ## Notă despre cărțile custom
 
 Câteva mecanici din cărțile "Detectorul lui Dale" (certificatul de handicap, peturile reciclate) sunt implementate simplificat — verifică-le în joc și spune-mi dacă vrei alt comportament.
+=======
+# sufalopoly1
+>>>>>>> 7d3125375bb38345ad1ec0c18a075cb9145206df
